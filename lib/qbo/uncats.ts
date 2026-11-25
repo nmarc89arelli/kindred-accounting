@@ -160,6 +160,24 @@ export async function listUncats(): Promise<UncatTxn[]> {
   return rows;
 }
 
+// Lightweight count for the Home screen (no suggestion queries).
+export async function countUncats(): Promise<number> {
+  const uncats = await uncatAccountIds();
+  if (uncats.size === 0) return 0;
+  const [purchases, deposits] = await Promise.all([
+    qboQuery<Purchase>(
+      `select * from Purchase where TxnDate >= '${since(365)}' orderby TxnDate desc maxresults 1000`
+    ),
+    qboQuery<Deposit>(
+      `select * from Deposit where TxnDate >= '${since(365)}' orderby TxnDate desc maxresults 1000`
+    ),
+  ]);
+  return (
+    purchases.filter((p) => p.Line.some((l) => lineIsUncat(l, uncats))).length +
+    deposits.filter((d) => d.Line.some((l) => depositLineIsUncat(l, uncats))).length
+  );
+}
+
 function firstWords(s?: string): string | undefined {
   const t = (s ?? "").trim();
   return t ? t.split(/\s{2,}|\n/)[0].slice(0, 60) : undefined;

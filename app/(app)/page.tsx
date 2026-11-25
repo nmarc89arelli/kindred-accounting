@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/roles";
 import { createClient } from "@/lib/supabase/server";
 import { money, monthLabel } from "@/lib/reports";
+import { qboStatus } from "@/lib/qbo/auth";
+import { countUncats } from "@/lib/qbo/uncats";
 
 export const dynamic = "force-dynamic";
 
@@ -22,12 +24,29 @@ export default async function HomePage() {
   const prevPeriod = `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, "0")}-01`;
 
   const supabase = await createClient();
-  const { data: prevReport } = await supabase
-    .from("reports")
-    .select("id, totals, generated_at, token_hash")
-    .eq("type", "giving")
-    .eq("period", prevPeriod)
-    .maybeSingle();
+  const [{ data: prevReport }, { count: pendingReimb }, status] =
+    await Promise.all([
+      supabase
+        .from("reports")
+        .select("id, totals, token_hash")
+        .eq("type", "giving")
+        .eq("period", prevPeriod)
+        .maybeSingle(),
+      supabase
+        .from("reimbursements")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "submitted"),
+      qboStatus(),
+    ]);
+
+  let uncatCount: number | null = null;
+  if (status.connected) {
+    try {
+      uncatCount = await countUncats();
+    } catch {
+      uncatCount = null;
+    }
+  }
 
   const today = now.toLocaleDateString("en-US", {
     weekday: "long",
@@ -36,12 +55,56 @@ export default async function HomePage() {
   });
 
   type Totals = { grand: { amount: number } };
+  const nothingToDo =
+    (uncatCount ?? 0) === 0 && (pendingReimb ?? 0) === 0 && !!prevReport;
 
   return (
     <section className="panel">
       <h1>Today</h1>
       <p className="sub">{today}. Everything that needs a decision, in one place.</p>
       <div className="todo">
+        {!status.connected && (
+          <div className="todo-row">
+            <span className="t-num">!</span>
+            <span className="t-body">
+              <span className="desc">QuickBooks not connected</span>
+              <br />
+              <span className="fine">Uncats and reimbursement checks are paused until it is.</span>
+            </span>
+            {session.role === "admin" && (
+              <Link className="btn" href="/settings">Connect</Link>
+            )}
+          </div>
+        )}
+
+        {uncatCount !== null && uncatCount > 0 && (
+          <div className="todo-row">
+            <span className="t-num">{uncatCount}</span>
+            <span className="t-body">
+              <span className="desc">
+                Uncategorized transaction{uncatCount === 1 ? "" : "s"}
+              </span>
+              <br />
+              <span className="fine">From the bank feed, waiting on a category.</span>
+            </span>
+            <Link className="btn" href="/uncats">Categorize</Link>
+          </div>
+        )}
+
+        {(pendingReimb ?? 0) > 0 && (
+          <div className="todo-row">
+            <span className="t-num">{pendingReimb}</span>
+            <span className="t-body">
+              <span className="desc">
+                Reimbursement{pendingReimb === 1 ? "" : "s"} waiting on a check
+              </span>
+              <br />
+              <span className="fine">Write the check, then confirm it with its number.</span>
+            </span>
+            <Link className="btn" href="/reimbursements">Review</Link>
+          </div>
+        )}
+
         {!prevReport ? (
           <div className="todo-row">
             <span className="t-num">1</span>
@@ -53,9 +116,7 @@ export default async function HomePage() {
                 generate the board report.
               </span>
             </span>
-            <Link className="btn" href="/reports">
-              Upload export
-            </Link>
+            <Link className="btn" href="/reports">Upload export</Link>
           </div>
         ) : (
           <div className="todo-row">
@@ -64,25 +125,26 @@ export default async function HomePage() {
               <span className="desc">{monthLabel(prevPeriod)} giving report</span>
               <br />
               <span className="fine">
-                Generated · {money((prevReport.totals as Totals).grand.amount)} total
-                giving · board link {prevReport.token_hash ? "active" : "revoked"}
+                Generated · {money((prevReport.totals as Totals).grand.amount)}{" "}
+                total giving · board link{" "}
+                {prevReport.token_hash ? "active" : "revoked"}
               </span>
             </span>
             <span className="pill ok">Done</span>
           </div>
         )}
-        <div className="todo-row">
-          <span className="t-num">·</span>
-          <span className="t-body">
-            <span className="desc">Uncats, reimbursements, board numbers</span>
-            <br />
-            <span className="fine">
-              Arrive with the QuickBooks connection in Phase 3. This list will
-              fill with real work items.
+
+        {nothingToDo && (
+          <div className="todo-row">
+            <span className="t-num">·</span>
+            <span className="t-body">
+              <span className="desc">Nothing needs you</span>
+              <br />
+              <span className="fine">Books are caught up.</span>
             </span>
-          </span>
-          <span className="pill warn">Scheduled</span>
-        </div>
+            <span className="pill ok">Clear</span>
+          </div>
+        )}
       </div>
     </section>
   );
