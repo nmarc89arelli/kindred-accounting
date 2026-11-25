@@ -356,6 +356,74 @@ select:focus-visible {
   outline-offset: 0;
 }
 
+/* ---- Combobox ---- */
+.cbx {
+  position: relative;
+  display: inline-block;
+  width: 220px;
+  max-width: 100%;
+}
+
+.cbx input {
+  width: 100%;
+  padding-right: 28px;
+}
+
+.cbx input.cbx-filled::placeholder {
+  color: var(--ink);
+  opacity: 1;
+}
+
+.cbx-caret {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted);
+  pointer-events: none;
+  display: flex;
+}
+
+.cbx-pop {
+  position: fixed;
+  z-index: 50;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  box-shadow: 0 8px 24px rgba(4, 37, 28, 0.14);
+  max-height: 264px;
+  overflow-y: auto;
+  padding: 4px;
+}
+
+.cbx-opt {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--ink);
+  padding: 7px 10px;
+  cursor: pointer;
+}
+
+.cbx-opt.act {
+  background: var(--green-soft);
+}
+
+.cbx-opt.sel {
+  font-weight: 700;
+}
+
+.cbx-none {
+  padding: 10px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
 /* ---- Pills ---- */
 .pill {
   display: inline-block;

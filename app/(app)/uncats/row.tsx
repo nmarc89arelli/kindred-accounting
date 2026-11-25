@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import type { UncatTxn, Option } from "@/lib/qbo/uncats";
+import { Combobox } from "@/components/combobox";
 import { postCategorization } from "./actions";
 
 export function UncatRow({
@@ -88,35 +89,24 @@ export function UncatRow({
       </td>
       <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>{money}</td>
       <td>
-        <select
+        <Combobox
+          options={accounts}
           value={accountId}
-          onChange={(e) => setAccountId(e.target.value)}
-          aria-label="Category"
-          style={{ maxWidth: 220 }}
-        >
-          <option value="">Choose…</option>
-          {accounts.map((a) => (
-            <option key={a.id} value={a.id}>
-              {a.name}
-            </option>
-          ))}
-        </select>
+          onChange={setAccountId}
+          placeholder="Search categories"
+          ariaLabel="Category"
+        />
       </td>
       {showClass && (
         <td>
-          <select
+          <Combobox
+            options={classOptions}
             value={classId}
-            onChange={(e) => setClassId(e.target.value)}
-            aria-label="Class"
-            style={{ maxWidth: 160 }}
-          >
-            <option value="">None</option>
-            {classOptions.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
+            onChange={setClassId}
+            placeholder="None"
+            ariaLabel="Class"
+            allowNone
+          />
         </td>
       )}
       <td>
