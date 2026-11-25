@@ -1,7 +1,8 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const PUBLIC_PATHS = ["/login", "/auth", "/denied", "/share"];
+// /api/intranet authenticates with an HMAC signature, not a session.
+const PUBLIC_PATHS = ["/login", "/auth", "/denied", "/share", "/api/intranet"];
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request });
