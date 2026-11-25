@@ -37,4 +37,5 @@ export const TABS: { href: string; label: string; roles: AppRole[] }[] = [
   { href: "/reports", label: "Reports", roles: ["admin", "exec", "board"] },
   { href: "/users", label: "Users", roles: ["admin"] },
   { href: "/ask", label: "Ask", roles: ["admin", "exec"] },
+  { href: "/settings", label: "Settings", roles: ["admin"] },
 ];
