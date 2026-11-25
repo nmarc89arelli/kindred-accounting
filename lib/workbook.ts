@@ -1,7 +1,7 @@
 import "server-only";
 import ExcelJS from "exceljs";
 import type { GivingRow, GivingTotals } from "@/lib/tithely";
-import type { BoardTotals } from "@/lib/qbo/boardnumbers";
+import type { BoardTotals, MoneyLine } from "@/lib/qbo/boardnumbers";
 
 // Excel formula injection guard: a cell value starting with = + - @ gets a
 // leading apostrophe so donor names and bank descriptors can never execute.
@@ -276,14 +276,15 @@ export async function buildBoardNumbersWorkbook(
   ws.getCell("A2").font = { name: "Roboto", size: 11, bold: true };
 
   const priorMap = new Map<string, number>();
-  if (prior) {
-    for (const l of [
-      ...prior.totals.income,
-      ...prior.totals.otherIncome,
-      ...prior.totals.expenseSections,
-    ]) {
-      priorMap.set(l.label, l.amount);
+  const addPrior = (lines: MoneyLine[], prefix: string) => {
+    for (const l of lines) {
+      priorMap.set(prefix + l.label, l.amount);
+      if (l.lines) addPrior(l.lines, `${prefix}${l.label} > `);
     }
+  };
+  if (prior) {
+    addPrior([...prior.totals.income, ...prior.totals.otherIncome], "Income|");
+    addPrior(prior.totals.expenseSections, "Expenses|");
   }
 
   let r = 4;
@@ -301,21 +302,28 @@ export async function buildBoardNumbersWorkbook(
     }
     r += 1;
   };
-  const line = (label: string, amount: number, bold = false) => {
+  const line = (label: string, amount: number, key = "", depth = 0, bold = false) => {
     ws.getCell(`A${r}`).value = safe(label);
+    if (depth > 0) ws.getCell(`A${r}`).alignment = { indent: depth };
     ws.getCell(`B${r}`).value = amount;
     ws.getCell(`B${r}`).numFmt = MONEY;
-    if (prior && priorMap.has(label)) {
-      ws.getCell(`C${r}`).value = priorMap.get(label);
+    if (prior && key && priorMap.has(key)) {
+      ws.getCell(`C${r}`).value = priorMap.get(key);
       ws.getCell(`C${r}`).numFmt = MONEY;
     }
     if (bold) {
-      ["A", "B", "C"].forEach((c) => {
+      ["A", "B"].forEach((c) => {
         ws.getCell(`${c}${r}`).font = { name: "Roboto", size: 11, bold: true };
-        ws.getCell(`${c}${r}`).fill = fill(SOFT);
       });
     }
     r += 1;
+  };
+  const writeLines = (lines: MoneyLine[], prefix: string, depth = 0) => {
+    for (const l of lines) {
+      const key = prefix + l.label;
+      line(l.label, l.amount, key, depth, !!l.lines);
+      if (l.lines) writeLines(l.lines, `${key} > `, depth + 1);
+    }
   };
   const totalLine = (label: string, cur: number, prev?: number) => {
     ws.getCell(`A${r}`).value = label;
@@ -333,11 +341,11 @@ export async function buildBoardNumbersWorkbook(
   };
 
   head("Income");
-  for (const l of [...totals.income, ...totals.otherIncome]) line(l.label, l.amount);
+  writeLines([...totals.income, ...totals.otherIncome], "Income|");
   totalLine("Total income", totals.totals.income, prior?.totals.totals.income);
   r += 1;
   head("Expenses");
-  for (const l of totals.expenseSections) line(l.label, l.amount);
+  writeLines(totals.expenseSections, "Expenses|");
   totalLine("Total expenses", totals.totals.expenses, prior?.totals.totals.expenses);
   r += 1;
   totalLine("Net income", totals.totals.net, prior?.totals.totals.net);

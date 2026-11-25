@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import type { BoardTotals, MoneyLine } from "@/lib/qbo/boardnumbers";
 import { money, monthLabel } from "@/lib/reports-shared";
 
@@ -21,11 +21,46 @@ export function BoardNumbers({
   const showPrior = compare && !!prior;
 
   const priorMap = new Map<string, number>();
-  if (prior) {
-    for (const l of [...prior.income, ...prior.otherIncome, ...prior.expenseSections]) {
-      priorMap.set(l.label, l.amount);
+  const addPrior = (lines: MoneyLine[], prefix: string) => {
+    for (const l of lines) {
+      priorMap.set(prefix + l.label, l.amount);
+      if (l.lines) addPrior(l.lines, `${prefix}${l.label} > `);
     }
+  };
+  if (prior) {
+    addPrior([...prior.income, ...prior.otherIncome], "Income|");
+    addPrior(prior.expenseSections, "Expenses|");
   }
+
+  const rows = (
+    lines: MoneyLine[],
+    depth: number,
+    prefix: string
+  ): ReactNode[] =>
+    lines.flatMap((l) => {
+      const key = prefix + l.label;
+      const row = (
+        <tr key={key}>
+          <td
+            style={{
+              paddingLeft: depth * 18,
+              fontWeight: l.lines ? 600 : 400,
+            }}
+          >
+            {l.label}
+          </td>
+          <td style={{ textAlign: "right", fontWeight: l.lines ? 600 : 400 }}>
+            {money(l.amount)}
+          </td>
+          {showPrior && (
+            <td style={{ textAlign: "right", color: "var(--muted)" }}>
+              {priorMap.has(key) ? money(priorMap.get(key)!) : "—"}
+            </td>
+          )}
+        </tr>
+      );
+      return l.lines ? [row, ...rows(l.lines, depth + 1, `${key} > `)] : [row];
+    });
 
   const section = (title: string, lines: MoneyLine[]) =>
     lines.length === 0 ? null : (
@@ -38,17 +73,7 @@ export function BoardNumbers({
             {title}
           </th>
         </tr>
-        {lines.map((l) => (
-          <tr key={`${title}-${l.label}`}>
-            <td>{l.label}</td>
-            <td style={{ textAlign: "right" }}>{money(l.amount)}</td>
-            {showPrior && (
-              <td style={{ textAlign: "right", color: "var(--muted)" }}>
-                {priorMap.has(l.label) ? money(priorMap.get(l.label)!) : "—"}
-              </td>
-            )}
-          </tr>
-        ))}
+        {rows(lines, 0, `${title}|`)}
       </>
     );
 

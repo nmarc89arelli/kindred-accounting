@@ -1,7 +1,7 @@
 import "server-only";
 import { qboQuery, qboReport } from "@/lib/qbo/api";
 
-export type MoneyLine = { label: string; amount: number };
+export type MoneyLine = { label: string; amount: number; lines?: MoneyLine[] };
 
 export type BoardTotals = {
   kind: "board_numbers";
@@ -54,7 +54,9 @@ function childLines(section: Row): MoneyLine[] {
       if (label) {
         // A section header row can itself carry an amount (e.g. "Marketing
         // $39.59" with a Subscriptions child); the Summary already includes it.
-        out.push({ label, amount });
+        // Keep the breakdown: the section's own child rows become sub-lines.
+        const sub = childLines(child);
+        out.push(sub.length ? { label, amount, lines: sub } : { label, amount });
       }
     }
   }
