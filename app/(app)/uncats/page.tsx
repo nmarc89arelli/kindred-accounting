@@ -58,12 +58,6 @@ export default async function UncatsPage() {
   return (
     <section className="panel">
       <h1>Uncats{rows.length > 0 ? ` · ${rows.length}` : ""}</h1>
-      <p className="sub">
-        Everything the bank feed added as uncategorized. Pick the category and
-        class, post it, and it&apos;s written straight into QuickBooks.
-        Recurring payees get a suggested category from the last 18 months of
-        history.
-      </p>
 
       {loadError ? (
         <p className="notice error">{loadError}</p>
@@ -75,14 +69,14 @@ export default async function UncatsPage() {
         </p>
       ) : (
         <div className="tscroll">
-          <table>
+          <table className="zebra">
             <thead>
               <tr>
                 <th>Date</th>
                 <th>Transaction</th>
                 <th style={{ textAlign: "right" }}>Amount</th>
                 <th>Category</th>
-                <th>Class</th>
+                {classOpts.length > 0 && <th>Class</th>}
                 <th></th>
               </tr>
             </thead>

@@ -21,6 +21,7 @@ export function UncatRow({
 
   const money = (txn.txnType === "Deposit" ? "+" : "") +
     txn.amount.toLocaleString("en-US", { style: "currency", currency: "USD" });
+  const showClass = classOptions.length > 0;
 
   function post() {
     setError(null);
@@ -55,7 +56,9 @@ export function UncatRow({
           <span style={{ textDecoration: "line-through" }}>{txn.payee}</span>
         </td>
         <td style={{ textAlign: "right" }}>{money}</td>
-        <td colSpan={2}>{accounts.find((a) => a.id === accountId)?.name}</td>
+        <td colSpan={showClass ? 2 : 1}>
+          {accounts.find((a) => a.id === accountId)?.name}
+        </td>
         <td>
           <span className="pill ok">Posted to QBO</span>
         </td>
@@ -99,21 +102,23 @@ export function UncatRow({
           ))}
         </select>
       </td>
-      <td>
-        <select
-          value={classId}
-          onChange={(e) => setClassId(e.target.value)}
-          aria-label="Class"
-          style={{ maxWidth: 160 }}
-        >
-          <option value="">None</option>
-          {classOptions.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
-      </td>
+      {showClass && (
+        <td>
+          <select
+            value={classId}
+            onChange={(e) => setClassId(e.target.value)}
+            aria-label="Class"
+            style={{ maxWidth: 160 }}
+          >
+            <option value="">None</option>
+            {classOptions.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </td>
+      )}
       <td>
         <button className="btn" onClick={post} disabled={pending}>
           {pending ? "Posting…" : "Post"}

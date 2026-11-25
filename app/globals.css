@@ -290,6 +290,10 @@ tr:last-child > td {
   border-bottom: none;
 }
 
+table.zebra tbody tr:nth-child(odd) td {
+  background: #fafbf9;
+}
+
 td .desc {
   font-weight: 600;
 }
