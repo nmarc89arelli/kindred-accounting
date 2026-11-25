@@ -24,12 +24,18 @@ export default async function HomePage() {
   const prevPeriod = `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, "0")}-01`;
 
   const supabase = await createClient();
-  const [{ data: prevReport }, { count: pendingReimb }, status] =
+  const [{ data: prevReport }, { data: prevBoard }, { count: pendingReimb }, status] =
     await Promise.all([
       supabase
         .from("reports")
         .select("id, totals, token_hash")
         .eq("type", "giving")
+        .eq("period", prevPeriod)
+        .maybeSingle(),
+      supabase
+        .from("reports")
+        .select("id")
+        .eq("type", "board_numbers")
         .eq("period", prevPeriod)
         .maybeSingle(),
       supabase
@@ -129,6 +135,30 @@ export default async function HomePage() {
                 total giving · board link{" "}
                 {prevReport.token_hash ? "active" : "revoked"}
               </span>
+            </span>
+            <span className="pill ok">Done</span>
+          </div>
+        )}
+
+        {!prevBoard ? (
+          <div className="todo-row">
+            <span className="t-num">1</span>
+            <span className="t-body">
+              <span className="desc">{monthLabel(prevPeriod)} board numbers</span>
+              <br />
+              <span className="fine">
+                The month has closed. Generate the board sheet from QuickBooks.
+              </span>
+            </span>
+            <Link className="btn" href="/reports">Generate</Link>
+          </div>
+        ) : (
+          <div className="todo-row">
+            <span className="t-num">·</span>
+            <span className="t-body">
+              <span className="desc">{monthLabel(prevPeriod)} board numbers</span>
+              <br />
+              <span className="fine">Generated.</span>
             </span>
             <span className="pill ok">Done</span>
           </div>

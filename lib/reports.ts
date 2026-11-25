@@ -4,7 +4,7 @@ import type { GivingTotals } from "@/lib/tithely";
 
 export type Report = {
   id: string;
-  type: "giving";
+  type: "giving" | "board_numbers";
   period: string;
   title: string;
   totals: GivingTotals;
@@ -14,13 +14,7 @@ export type Report = {
   generated_at: string;
 };
 
-export function monthLabel(period: string): string {
-  const [y, m] = period.split("-").map(Number);
-  return `${["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"][m - 1]} ${y}`;
-}
-
-export const money = (n: number) =>
-  n.toLocaleString("en-US", { style: "currency", currency: "USD" });
+export { money, monthLabel } from "@/lib/reports-shared";
 
 // Service-role fetch used by the public share route and download routes
 // AFTER authorization (token or role) has been established by the caller.

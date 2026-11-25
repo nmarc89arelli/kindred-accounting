@@ -117,6 +117,95 @@ export async function generateGivingReport(
   return { shareUrl };
 }
 
+export async function generateBoardNumbers(
+  formData: FormData
+): Promise<{ error?: string; shareUrl?: string }> {
+  const session = await requireStaff();
+
+  const month = String(formData.get("month") ?? "");
+  if (!/^\d{4}-\d{2}$/.test(month)) return { error: "Pick the report month." };
+  const period = `${month}-01`;
+
+  // Optional manual balances (e.g. WIF accounts not tracked in QuickBooks).
+  const manual: { label: string; amount: number; source: "manual" }[] = [];
+  for (const i of [1, 2]) {
+    const label = String(formData.get(`manual_label_${i}`) ?? "").trim();
+    const raw = String(formData.get(`manual_amount_${i}`) ?? "").replace(/[$,]/g, "").trim();
+    if (!label && !raw) continue;
+    const amount = Number(raw);
+    if (!label || !Number.isFinite(amount)) {
+      return { error: `Manual balance ${i} needs both a name and a number.` };
+    }
+    manual.push({ label: label.slice(0, 80), amount: Math.round(amount * 100) / 100, source: "manual" });
+  }
+
+  const { fetchBoardTotals, bankBalances } = await import("@/lib/qbo/boardnumbers");
+  let pl, banks;
+  try {
+    [pl, banks] = await Promise.all([fetchBoardTotals(period), bankBalances()]);
+  } catch (e) {
+    return { error: (e as Error).message };
+  }
+
+  const totals = {
+    kind: "board_numbers",
+    ...pl,
+    balances: [
+      ...banks.map((b) => ({ ...b, source: "qbo" as const })),
+      ...manual,
+    ],
+  };
+
+  const admin = createAdminClient();
+  const { data: existing } = await admin
+    .from("reports")
+    .select("id")
+    .eq("type", "board_numbers")
+    .eq("period", period)
+    .maybeSingle();
+
+  let shareUrl: string | undefined;
+  if (existing) {
+    const { error } = await admin
+      .from("reports")
+      .update({
+        totals,
+        generated_by: session.email,
+        generated_at: new Date().toISOString(),
+        title: `Board Numbers · ${monthLabel(period)}`,
+      })
+      .eq("id", existing.id);
+    if (error) return { error: error.message };
+  } else {
+    const { token, hash } = newShareToken();
+    const { data, error } = await admin
+      .from("reports")
+      .insert({
+        type: "board_numbers",
+        period,
+        title: `Board Numbers · ${monthLabel(period)}`,
+        totals,
+        tx_count: 0,
+        token_hash: hash,
+        generated_by: session.email,
+      })
+      .select("id")
+      .single();
+    if (error) return { error: error.message };
+    shareUrl = `${process.env.NEXT_PUBLIC_APP_URL}/share/${data.id}?t=${token}`;
+  }
+
+  await audit(session.email, existing ? "report.regenerate" : "report.generate", {
+    type: "board_numbers",
+    period,
+    net_income: totals.totals.net,
+  });
+
+  revalidatePath("/reports");
+  revalidatePath("/");
+  return { shareUrl };
+}
+
 export async function rotateShareLink(
   reportId: string
 ): Promise<{ error?: string; shareUrl?: string }> {

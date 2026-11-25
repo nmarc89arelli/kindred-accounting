@@ -3,7 +3,10 @@ import Link from "next/link";
 import { getSession } from "@/lib/roles";
 import { createClient } from "@/lib/supabase/server";
 import { money, monthLabel, type Report } from "@/lib/reports";
+import type { BoardTotals } from "@/lib/qbo/boardnumbers";
+import { qboStatus } from "@/lib/qbo/auth";
 import { UploadForm } from "./upload-form";
+import { BoardForm } from "./board-form";
 import { LinkControls } from "./link-controls";
 
 export const dynamic = "force-dynamic";
@@ -19,6 +22,15 @@ export default async function ReportsPage() {
     .order("period", { ascending: false });
   const reports = (data ?? []) as Report[];
   const staff = session.role === "admin" || session.role === "exec";
+  const qboConnected = staff ? (await qboStatus()).connected : false;
+
+  // Pre-fill the manual (non-QBO) balances from the latest board report.
+  const latestBoard = reports.find((r) => r.type === "board_numbers");
+  const manualDefaults = latestBoard
+    ? ((latestBoard.totals as unknown as BoardTotals).balances ?? [])
+        .filter((b) => b.source === "manual")
+        .map((b) => ({ label: b.label, amount: b.amount }))
+    : [];
 
   return (
     <section className="panel">
@@ -26,15 +38,23 @@ export default async function ReportsPage() {
       {staff ? (
         <>
           <p className="sub">
-            Upload the Tithe.ly transactions export and the monthly giving
-            report is built, stored, and given a private board link. Board
-            numbers from QuickBooks arrive in Phase 3.
+            Both monthly board reports: the board numbers sheet built live
+            from QuickBooks, and the giving report from the Tithe.ly export.
+            Each gets a private board link.
           </p>
-          <h2 className="rpt-h">Giving report · from Tithe.ly</h2>
+          <h2 className="rpt-h">Board numbers · from QuickBooks</h2>
+          {qboConnected ? (
+            <BoardForm manualDefaults={manualDefaults} />
+          ) : (
+            <p className="notice">QuickBooks isn&apos;t connected (Settings).</p>
+          )}
+          <h2 className="rpt-h" style={{ marginTop: 34 }}>
+            Giving report · from Tithe.ly
+          </h2>
           <UploadForm />
         </>
       ) : (
-        <p className="sub">Monthly giving reports for the board.</p>
+        <p className="sub">Monthly reports for the board.</p>
       )}
 
       <h2 className="rpt-h" style={{ marginTop: 34 }}>
@@ -57,13 +77,19 @@ export default async function ReportsPage() {
               </tr>
             </thead>
             <tbody>
-              {reports.map((r) => (
+              {reports.map((r) => {
+                const isBoard = r.type === "board_numbers";
+                const bt = isBoard ? (r.totals as unknown as BoardTotals) : null;
+                return (
                 <tr key={r.id}>
                   <td>
                     <span className="desc">{r.title}</span>
                     <br />
                     <span className="fine">
-                      {r.tx_count} transactions · generated{" "}
+                      {isBoard
+                        ? "QuickBooks P&L"
+                        : `${r.tx_count} transactions`}{" "}
+                      · generated{" "}
                       {new Date(r.generated_at).toLocaleDateString("en-US", {
                         month: "short",
                         day: "numeric",
@@ -72,13 +98,17 @@ export default async function ReportsPage() {
                       by {r.generated_by}
                     </span>
                   </td>
-                  <td style={{ textAlign: "right" }}>{money(r.totals.grand.amount)}</td>
-                  <td style={{ textAlign: "right" }}>{money(r.totals.grand.net)}</td>
+                  <td style={{ textAlign: "right" }}>
+                    {isBoard ? `${money(bt!.totals.net)} net` : money(r.totals.grand.amount)}
+                  </td>
+                  <td style={{ textAlign: "right" }}>
+                    {isBoard ? "—" : money(r.totals.grand.net)}
+                  </td>
                   <td style={{ whiteSpace: "nowrap" }}>
                     <Link className="btn ghost" href={`/reports/${r.id}`}>
                       Board view
                     </Link>{" "}
-                    {staff && (
+                    {staff && !isBoard && (
                       <a className="btn ghost" href={`/api/reports/${r.id}/workbook`}>
                         Excel (full)
                       </a>
@@ -90,7 +120,8 @@ export default async function ReportsPage() {
                     </td>
                   )}
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>

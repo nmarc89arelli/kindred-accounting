@@ -1,6 +1,7 @@
 import "server-only";
 import ExcelJS from "exceljs";
 import type { GivingRow, GivingTotals } from "@/lib/tithely";
+import type { BoardTotals } from "@/lib/qbo/boardnumbers";
 
 // Excel formula injection guard: a cell value starting with = + - @ gets a
 // leading apostrophe so donor names and bank descriptors can never execute.
@@ -253,6 +254,98 @@ export async function buildBoardWorkbook(
   ws.getCell(`B${r}`).value = totals.failed.count;
   ws.getCell(`C${r}`).value = totals.failed.amount;
   ws.getCell(`C${r}`).numFmt = MONEY;
+
+  return Buffer.from(await wb.xlsx.writeBuffer());
+}
+
+// Board numbers workbook: one sheet, income / expense sections / net /
+// balances, with an optional prior-month column.
+export async function buildBoardNumbersWorkbook(
+  period: string,
+  totals: BoardTotals,
+  prior?: { period: string; totals: BoardTotals } | null
+): Promise<Buffer> {
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet("Board Numbers");
+  const cols = prior ? [42, 18, 18] : [42, 18];
+  cols.forEach((w, i) => (ws.getColumn(i + 1).width = w));
+
+  ws.getCell("A1").value = "Kindred Church · Board Numbers";
+  ws.getCell("A1").font = { name: "Roboto", size: 16, bold: true, color: { argb: GREEN } };
+  ws.getCell("A2").value = `${monthName(period)} · Source: QuickBooks Statement of Activity`;
+  ws.getCell("A2").font = { name: "Roboto", size: 11, bold: true };
+
+  const priorMap = new Map<string, number>();
+  if (prior) {
+    for (const l of [
+      ...prior.totals.income,
+      ...prior.totals.otherIncome,
+      ...prior.totals.expenseSections,
+    ]) {
+      priorMap.set(l.label, l.amount);
+    }
+  }
+
+  let r = 4;
+  const head = (text: string) => {
+    ws.getCell(`A${r}`).value = text;
+    ws.getCell(`A${r}`).font = { name: "Roboto", size: 11, bold: true, color: { argb: "FFFFFFFF" } };
+    ws.getCell(`A${r}`).fill = fill(GREEN);
+    ws.getCell(`B${r}`).value = monthName(period);
+    ws.getCell(`B${r}`).font = { name: "Roboto", size: 11, bold: true, color: { argb: "FFFFFFFF" } };
+    ws.getCell(`B${r}`).fill = fill(GREEN);
+    if (prior) {
+      ws.getCell(`C${r}`).value = monthName(prior.period);
+      ws.getCell(`C${r}`).font = { name: "Roboto", size: 11, bold: true, color: { argb: "FFFFFFFF" } };
+      ws.getCell(`C${r}`).fill = fill(GREEN);
+    }
+    r += 1;
+  };
+  const line = (label: string, amount: number, bold = false) => {
+    ws.getCell(`A${r}`).value = safe(label);
+    ws.getCell(`B${r}`).value = amount;
+    ws.getCell(`B${r}`).numFmt = MONEY;
+    if (prior && priorMap.has(label)) {
+      ws.getCell(`C${r}`).value = priorMap.get(label);
+      ws.getCell(`C${r}`).numFmt = MONEY;
+    }
+    if (bold) {
+      ["A", "B", "C"].forEach((c) => {
+        ws.getCell(`${c}${r}`).font = { name: "Roboto", size: 11, bold: true };
+        ws.getCell(`${c}${r}`).fill = fill(SOFT);
+      });
+    }
+    r += 1;
+  };
+  const totalLine = (label: string, cur: number, prev?: number) => {
+    ws.getCell(`A${r}`).value = label;
+    ws.getCell(`B${r}`).value = cur;
+    ws.getCell(`B${r}`).numFmt = MONEY;
+    if (prior && prev !== undefined) {
+      ws.getCell(`C${r}`).value = prev;
+      ws.getCell(`C${r}`).numFmt = MONEY;
+    }
+    (prior ? ["A", "B", "C"] : ["A", "B"]).forEach((c) => {
+      ws.getCell(`${c}${r}`).font = { name: "Roboto", size: 11, bold: true, color: { argb: "FFFFFFFF" } };
+      ws.getCell(`${c}${r}`).fill = fill(GREEN);
+    });
+    r += 1;
+  };
+
+  head("Income");
+  for (const l of [...totals.income, ...totals.otherIncome]) line(l.label, l.amount);
+  totalLine("Total income", totals.totals.income, prior?.totals.totals.income);
+  r += 1;
+  head("Expenses");
+  for (const l of totals.expenseSections) line(l.label, l.amount);
+  totalLine("Total expenses", totals.totals.expenses, prior?.totals.totals.expenses);
+  r += 1;
+  totalLine("Net income", totals.totals.net, prior?.totals.totals.net);
+  r += 1;
+  head("Account balances (as of generation)");
+  for (const b of totals.balances) {
+    line(b.source === "manual" ? `${b.label} (reported)` : b.label, b.amount);
+  }
 
   return Buffer.from(await wb.xlsx.writeBuffer());
 }
