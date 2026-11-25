@@ -94,6 +94,16 @@ export async function qboRead<T = unknown>(
   return data[entity] as T;
 }
 
+// QBO Reports API (P&L etc.). params example:
+// { start_date: "2026-10-01", end_date: "2026-10-31" }
+export async function qboReport(
+  report: string,
+  params: Record<string, string>
+): Promise<unknown> {
+  const qs = new URLSearchParams(params).toString();
+  return qboFetch(`/reports/${report}?${qs}`);
+}
+
 export async function qboUpdate<T = unknown>(
   entity: string,
   body: Record<string, unknown>
