@@ -29,6 +29,9 @@ export default async function AppLayout({
       </header>
       <Tabs tabs={tabs} />
       {children}
+      <footer style={{ marginTop: 48, paddingTop: 14, borderTop: "1px solid var(--line)", fontSize: 12, color: "var(--muted)" }}>
+        Kindred Accounting · Questions or problems: nate@wearekindred.church
+      </footer>
     </div>
   );
 }
