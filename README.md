@@ -13,6 +13,21 @@ management screen, an append-only audit log, and the app shell. Reports land
 in Phase 2, QuickBooks (Uncats, Reimbursements, board numbers) in Phase 3,
 Ask in Phase 4.
 
+## Phase 2 (Reports)
+
+Giving reports from the Tithe.ly transactions CSV: upload a month's export
+and the app stores the transactions, computes fund totals (succeeded +
+pending counted; failed listed separately), and serves two renditions. The
+exec workbook (Dashboard / Giving / Failed Payments, live formulas, donor
+detail) downloads from the archive; the board rendition (overview only, no
+donor names, failed as count + total) serves to Board logins and to a
+public share link per report. Share tokens are 256-bit, stored only as a
+SHA-256 hash, rotatable and revocable, and every share-link view is logged.
+Workbooks are generated on the fly from the database; no files are stored.
+
+Phase 2 setup: run `supabase/migrations/0002_reports.sql` in the SQL
+Editor. No new environment variables.
+
 ## Deploy
 
 1. **Push this repo**

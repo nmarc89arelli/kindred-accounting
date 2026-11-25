@@ -259,6 +259,16 @@ select:focus-visible {
   color: var(--muted);
 }
 
+/* Reports */
+.rpt-h {
+  font-family: var(--display);
+  font-size: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin: 0 0 10px;
+  font-weight: 400;
+}
+
 /* Home to-do list */
 .todo {
   border-top: 2px solid var(--green);
