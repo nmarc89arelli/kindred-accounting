@@ -13,25 +13,29 @@ export default async function AppLayout({
   const tabs = TABS.filter((t) => t.roles.includes(session.role));
 
   return (
-    <div className="wrap">
-      <header className="app">
+    <div className="shell">
+      <aside className="side">
         <Image
+          className="logo"
           src="/kindred-logo-white.png"
           alt="Kindred Church"
           width={171}
           height={30}
           priority
         />
-        <span className="whoami">
-          Signed in as <b>{session.name}</b> · {roleLabel(session.role)}
-        </span>
-        <SignOutButton />
-      </header>
-      <Tabs tabs={tabs} />
-      {children}
-      <footer style={{ marginTop: 48, paddingTop: 14, borderTop: "1px solid var(--line)", fontSize: 12, color: "var(--muted)" }}>
-        Kindred Accounting · Questions or problems: nate@wearekindred.church
-      </footer>
+        <Tabs tabs={tabs} />
+        <div className="side-foot">
+          <b>{session.name}</b>
+          <span className="role">{roleLabel(session.role)}</span>
+          <SignOutButton />
+        </div>
+      </aside>
+      <div className="content">
+        <main>{children}</main>
+        <footer>
+          Kindred Accounting. Questions or problems: nate@wearekindred.church
+        </footer>
+      </div>
     </div>
   );
 }

@@ -61,120 +61,96 @@ export default async function HomePage() {
   });
 
   type Totals = { grand: { amount: number } };
-  const nothingToDo =
-    (uncatCount ?? 0) === 0 && (pendingReimb ?? 0) === 0 && !!prevReport;
 
   return (
     <section className="panel">
+      <div className="crumb">
+        <span>{today}</span>
+        <span className="chip">
+          {status.connected ? "QuickBooks connected" : "QuickBooks not connected"}
+        </span>
+      </div>
       <h1>Today</h1>
-      <p className="sub">{today}. Everything that needs a decision, in one place.</p>
-      <div className="todo">
-        {!status.connected && (
-          <div className="todo-row">
-            <span className="t-num">!</span>
-            <span className="t-body">
-              <span className="desc">QuickBooks not connected</span>
-              <br />
-              <span className="fine">Uncats and reimbursement checks are paused until it is.</span>
-            </span>
-            {session.role === "admin" && (
-              <Link className="btn" href="/settings">Connect</Link>
+      <p className="sub">Everything that needs a decision, in one place.</p>
+
+      {!status.connected && (
+        <p className="notice" style={{ marginBottom: 18 }}>
+          QuickBooks is not connected, so uncats and reimbursement checks are
+          paused.{" "}
+          {session.role === "admin" && (
+            <Link href="/settings" style={{ fontWeight: 700 }}>
+              Connect it in Settings.
+            </Link>
+          )}
+        </p>
+      )}
+
+      <div className="cards">
+        {uncatCount !== null && (
+          <div className={`card${uncatCount === 0 ? " done" : ""}`}>
+            <div className="lbl">Uncategorized transactions</div>
+            <div className="big">{uncatCount === 0 ? "Clear" : uncatCount}</div>
+            <p className="fine">
+              {uncatCount === 0
+                ? "The bank feed is caught up."
+                : "From the bank feed, waiting on a category."}
+            </p>
+            {uncatCount > 0 ? (
+              <Link className="btn" href="/uncats">Categorize</Link>
+            ) : (
+              <Link className="btn ghost" href="/uncats">View</Link>
             )}
           </div>
         )}
 
-        {uncatCount !== null && uncatCount > 0 && (
-          <div className="todo-row">
-            <span className="t-num">{uncatCount}</span>
-            <span className="t-body">
-              <span className="desc">
-                Uncategorized transaction{uncatCount === 1 ? "" : "s"}
-              </span>
-              <br />
-              <span className="fine">From the bank feed, waiting on a category.</span>
-            </span>
-            <Link className="btn" href="/uncats">Categorize</Link>
+        <div className={`card${(pendingReimb ?? 0) === 0 ? " done" : ""}`}>
+          <div className="lbl">Reimbursements</div>
+          <div className="big">
+            {(pendingReimb ?? 0) === 0 ? "Clear" : pendingReimb}
           </div>
-        )}
-
-        {(pendingReimb ?? 0) > 0 && (
-          <div className="todo-row">
-            <span className="t-num">{pendingReimb}</span>
-            <span className="t-body">
-              <span className="desc">
-                Reimbursement{pendingReimb === 1 ? "" : "s"} waiting on a check
-              </span>
-              <br />
-              <span className="fine">Write the check, then confirm it with its number.</span>
-            </span>
+          <p className="fine">
+            {(pendingReimb ?? 0) === 0
+              ? "Nothing waiting on a check."
+              : "Waiting on a check number."}
+          </p>
+          {(pendingReimb ?? 0) > 0 ? (
             <Link className="btn" href="/reimbursements">Review</Link>
-          </div>
-        )}
+          ) : (
+            <Link className="btn ghost" href="/reimbursements">View</Link>
+          )}
+        </div>
 
-        {!prevReport ? (
-          <div className="todo-row">
-            <span className="t-num">1</span>
-            <span className="t-body">
-              <span className="desc">{monthLabel(prevPeriod)} giving report</span>
-              <br />
-              <span className="fine">
-                The month has closed. Export transactions from Tithe.ly and
-                generate the board report.
-              </span>
-            </span>
+        <div className={`card${prevReport ? " done" : ""}`}>
+          <div className="lbl">{monthLabel(prevPeriod)} giving report</div>
+          <div className="big">{prevReport ? "Done" : "Due"}</div>
+          <p className="fine">
+            {prevReport
+              ? `${money((prevReport.totals as Totals).grand.amount)} total. Board link ${
+                  prevReport.token_hash ? "active" : "revoked"
+                }.`
+              : "The month has closed. Upload the Tithe.ly export."}
+          </p>
+          {prevReport ? (
+            <Link className="btn ghost" href={`/reports/${prevReport.id}`}>View</Link>
+          ) : (
             <Link className="btn" href="/reports">Upload export</Link>
-          </div>
-        ) : (
-          <div className="todo-row">
-            <span className="t-num">·</span>
-            <span className="t-body">
-              <span className="desc">{monthLabel(prevPeriod)} giving report</span>
-              <br />
-              <span className="fine">
-                Generated · {money((prevReport.totals as Totals).grand.amount)}{" "}
-                total giving · board link{" "}
-                {prevReport.token_hash ? "active" : "revoked"}
-              </span>
-            </span>
-            <span className="pill ok">Done</span>
-          </div>
-        )}
+          )}
+        </div>
 
-        {!prevBoard ? (
-          <div className="todo-row">
-            <span className="t-num">1</span>
-            <span className="t-body">
-              <span className="desc">{monthLabel(prevPeriod)} board numbers</span>
-              <br />
-              <span className="fine">
-                The month has closed. Generate the board sheet from QuickBooks.
-              </span>
-            </span>
+        <div className={`card${prevBoard ? " done" : ""}`}>
+          <div className="lbl">{monthLabel(prevPeriod)} board numbers</div>
+          <div className="big">{prevBoard ? "Done" : "Due"}</div>
+          <p className="fine">
+            {prevBoard
+              ? "Generated from QuickBooks."
+              : "The month has closed. Generate the board sheet from QuickBooks."}
+          </p>
+          {prevBoard ? (
+            <Link className="btn ghost" href={`/reports/${prevBoard.id}`}>View</Link>
+          ) : (
             <Link className="btn" href="/reports">Generate</Link>
-          </div>
-        ) : (
-          <div className="todo-row">
-            <span className="t-num">·</span>
-            <span className="t-body">
-              <span className="desc">{monthLabel(prevPeriod)} board numbers</span>
-              <br />
-              <span className="fine">Generated.</span>
-            </span>
-            <span className="pill ok">Done</span>
-          </div>
-        )}
-
-        {nothingToDo && (
-          <div className="todo-row">
-            <span className="t-num">·</span>
-            <span className="t-body">
-              <span className="desc">Nothing needs you</span>
-              <br />
-              <span className="fine">Books are caught up.</span>
-            </span>
-            <span className="pill ok">Clear</span>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </section>
   );
