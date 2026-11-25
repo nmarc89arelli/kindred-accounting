@@ -15,6 +15,7 @@ export default async function LoginPage() {
       <div className="login-card">
         <Image
           src="/kindred-logo-green.png"
+          unoptimized
           alt="Kindred Church"
           width={194}
           height={34}

@@ -18,6 +18,7 @@ export default async function AppLayout({
         <Image
           className="logo"
           src="/kindred-logo-white.png"
+          unoptimized
           alt="Kindred Church"
           width={171}
           height={30}

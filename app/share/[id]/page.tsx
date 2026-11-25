@@ -32,7 +32,7 @@ export default async function SharePage({
     return (
       <div className="login-shell">
         <div className="login-card">
-          <Image src="/kindred-logo-green.png" alt="Kindred Church" width={194} height={34} />
+          <Image src="/kindred-logo-green.png" alt="Kindred Church" width={194} height={34} unoptimized />
           <h1>Link not valid</h1>
           <p>
             This report link is no longer active. Contact the church office for
@@ -82,7 +82,7 @@ export default async function SharePage({
   return (
     <div className="wrap">
       <header className="app">
-        <Image src="/kindred-logo-white.png" alt="Kindred Church" width={171} height={30} priority />
+        <Image src="/kindred-logo-white.png" alt="Kindred Church" width={171} height={30} priority unoptimized />
       </header>
       <section className="panel">
         {body}
